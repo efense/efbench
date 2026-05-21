@@ -2,7 +2,7 @@
 
 use std::{
     sync::{
-        Arc, Mutex,
+        Arc,
         atomic::{AtomicBool, Ordering},
     },
     time::Duration,
@@ -22,10 +22,7 @@ pub async fn run_plot(
     let server_addr = format!("{ip}:{port}");
     crate::check_connection(&server_addr).await?;
     let stop = Arc::new(AtomicBool::new(false));
-    let state = Arc::new(Mutex::new(crate::BenchState {
-        total_latency_us: 0,
-        req_count: 0,
-    }));
+    let state = Arc::new(crate::BenchState::default());
 
     let (metrics_tx, mut metrics_rx) = mpsc::channel::<Metrics>(4096);
 

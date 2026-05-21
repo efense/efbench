@@ -6,8 +6,8 @@ mod plot;
 use std::{
     fs,
     sync::{
-        Arc, Mutex,
-        atomic::{AtomicBool, Ordering},
+        Arc,
+        atomic::{AtomicBool, AtomicU64, Ordering},
     },
     time::{Duration, Instant},
 };
@@ -16,9 +16,10 @@ use clap::{Parser, Subcommand};
 use efbench::proto::{Ping, benchmark_client::BenchmarkClient};
 use tokio::sync::mpsc;
 
+#[derive(Debug, Default)]
 pub(crate) struct BenchState {
-    total_latency_us: u128,
-    req_count: u64,
+    total_latency_us: AtomicU64,
+    req_count: AtomicU64,
 }
 
 #[derive(Clone, Copy)]
@@ -90,7 +91,7 @@ pub(crate) fn read_net_stat(iface: &str, stat: &str) -> u64 {
 pub(crate) async fn benchmark_loop(
     server_addr: String,
     _iface: String,
-    state: Arc<Mutex<BenchState>>,
+    state: Arc<BenchState>,
     stop: Arc<AtomicBool>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut client =
@@ -114,11 +115,9 @@ pub(crate) async fn benchmark_loop(
 
         match inbound.message().await {
             Ok(Some(_)) => {
-                let latency = sent.elapsed();
-                if let Ok(mut s) = state.lock() {
-                    s.total_latency_us += latency.as_micros();
-                    s.req_count += 1;
-                }
+                let latency = sent.elapsed().as_micros() as u64;
+                state.total_latency_us.fetch_add(latency, Ordering::Relaxed);
+                state.req_count.fetch_add(1, Ordering::Relaxed);
                 seq += 1;
             }
             Ok(None) => break,
@@ -134,7 +133,7 @@ pub(crate) async fn benchmark_loop(
 
 pub(crate) async fn reporter_task(
     iface: String,
-    state: Arc<Mutex<BenchState>>,
+    state: Arc<BenchState>,
     metrics_tx: mpsc::Sender<Metrics>,
     stop: Arc<AtomicBool>,
 ) {
@@ -153,19 +152,16 @@ pub(crate) async fn reporter_task(
         let now_tx = read_net_stat(&iface, "tx_bytes");
 
         let (avg_latency_us, req_count) = {
-            if let Ok(mut s) = state.lock() {
-                let avg = if s.req_count > 0 {
-                    s.total_latency_us as f64 / s.req_count as f64
-                } else {
-                    0.0
-                };
-                let cnt = s.req_count;
-                s.total_latency_us = 0;
-                s.req_count = 0;
-                (avg, cnt)
+            let count = state.req_count.load(Ordering::Relaxed);
+            let total_latency = state.total_latency_us.load(Ordering::Relaxed);
+            let avg = if count > 0 {
+                total_latency as f64 / count as f64
             } else {
-                (0.0, 0)
-            }
+                0.0
+            };
+            state.total_latency_us.store(0, Ordering::Relaxed);
+            state.req_count.store(0, Ordering::Relaxed);
+            (avg, count)
         };
 
         let _ = metrics_tx
