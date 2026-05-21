@@ -29,11 +29,8 @@ pub async fn run_plot(
     let b_state = state.clone();
     let b_stop = stop.clone();
     let b_addr = server_addr.clone();
-    let b_iface = iface.clone();
     let bench_handle = tokio::spawn(async move {
-        if let Err(e) =
-            crate::benchmark_loop(b_addr, b_iface, b_state, b_stop).await
-        {
+        if let Err(e) = crate::benchmark_loop(b_addr, b_state, b_stop).await {
             eprintln!("Benchmark error: {e}");
         }
     });

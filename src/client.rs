@@ -90,7 +90,6 @@ pub(crate) fn read_net_stat(iface: &str, stat: &str) -> u64 {
 
 pub(crate) async fn benchmark_loop(
     server_addr: String,
-    _iface: String,
     state: Arc<BenchState>,
     stop: Arc<AtomicBool>,
 ) -> Result<(), Box<dyn std::error::Error>> {
