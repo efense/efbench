@@ -18,12 +18,12 @@ cargo run --bin efbench-server -- <SRV_IP> <SRV_PORT>
 TUI interface to display the benchmark results in real-time using run chart
 for above metrics.
 
-![efbench TUI](efbench_tui.png)
-
 ```bash
 cargo run --bin efbench-client -- \
     live --iface eth1 --ip <SRV_IP> --port <SRV_PORT>
 ```
+
+![efbench TUI](efbench_tui.png)
 
 ## Client side -- Plot mode
 
@@ -34,3 +34,6 @@ benchmark been stopped by `Ctrl-C` to stop the benchmark.
 cargo run --bin efbench-client -- \
     plot --iface eth1 --ip <SRV_IP> --port <SRV_PORT>
 ```
+
+![efbench plot](efbench_plot.png)
+
