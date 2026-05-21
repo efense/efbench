@@ -24,6 +24,11 @@ jobs:
           rustup update nightly
           rustup component add rustfmt clippy rust-src
 
+      - name: install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get -y install libfontconfig-dev protobuf-compiler
+
       - name: rustfmt
         run: cargo fmt --all -- --check
 
